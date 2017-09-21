@@ -4,14 +4,14 @@ A system of data-processing and neural network to detect anomalies in
 messages from ACL TOP 550 and to output results as graphs on the
 web browser.
 
-##Overview
+## Overview
 
   - Display the anomaly level for each area in a general log in graphs
   - Display the graphs on a web browser
   - Determine the status of each area as okay, monitoring, or To be Attended
   - Also allows
     - Train the neural network with different set of data
-    - Apply to different ACL TOP model if retrained
+    - Apply to different ACL TOP model if re-trained
 
 ## Motivation
   The creation of this project is to improve the efficiency, applicability, reliability, and flexibility of ProDx data-processing that was done by the existing program. The pre-existing data-flow, implemented using VBA on Macro Excel in 2006, has not been updated for a decade and often lead to high false-positives due to human hard-coded thresholds. This project, inspired by machine-learning methodology, specifically an autoencoder neural network, use the pattern from big data to detect anomalies in a general log. It is also implemented using python, which makes advantage of many python libraries and dependencies as well as the object-oriented structure.
@@ -37,6 +37,7 @@ Make sure that you have the following files in your directory:
 * genLogToTable.py
 * dataFilter.py
 * autoencoder.py
+* FinalComputation.py
 as well as
 * golden_stat.csv
 * area folder
@@ -44,8 +45,8 @@ as well as
 Analytical Warning and Error Codes.xlsx
 
 those files are necessary for training
-* createGolden.py
-* trainAutoencoder.py
+* create_CSVs.py
+* train_Autoencoder.py
 
 ### Running
 
