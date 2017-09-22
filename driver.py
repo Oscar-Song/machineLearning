@@ -12,7 +12,7 @@ Author: Oscar Song, Sunjay Ravishankqr, Oshin Mundada
 from dataFilter import DataFilter
 from genLogtoTable import GeneralLog
 from autoencoder import Network
-from autoencoder import ConvPoolLayer, FullyConnectedLayer, SoftmaxLayer
+from autoencoder import FullyConnectedLayer
 from FinalComputation import FinalComputation
 
 import autoencoder
@@ -165,7 +165,7 @@ def raise_frame_f2():
 
             for area in range(len(areas)):                                  # Go into an area first. data_list[i] is a list of tuples
 
-                nn = autoencoder.load(parameters_path+'area_'+ str(area))       # Load the trained parameters into the autoencoder
+                nn = autoencoder.load(parameters_path+'area_'+ str(area), 0.5)       # Load the trained parameters into the autoencoder
                 lab_progress.config(text="Autoencoder running: "+areas[area])   #Update the progress label
                 progress.config(maximum=len(data_list[area]))                   # Set the max of progress bar to the size of what's to be processed
 
