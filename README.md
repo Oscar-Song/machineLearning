@@ -50,7 +50,7 @@ those files are necessary for training
 
 ### Running
 
-Assume the neural network is trained. Simply install the pacage.
+Assume the neural network is trained. Simply install the package.
 
 ```sh
 $ cd prodxDetector
