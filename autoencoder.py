@@ -3,12 +3,13 @@
 
 A Theano-based program for training and running an autoencoder neural network.
 
-Supports layer types: fully connected, convolutional, max
-pooling, softmax
+Supports layer types: fully connected
+
 Supports activation functions: sigmoid, tanh, and
 rectified linear units
 
-May be run on CPU and/or GPU.
+Outline of code based from http://neuralnetworksanddeeplearning.com
+by Michael Nielsen
 
 Author: Janelle Lines
 
@@ -35,24 +36,18 @@ def ReLU(z): return T.maximum(0.0, z)
 from theano.tensor.nnet import sigmoid
 from theano.tensor import tanh
 
-
-'''Set the GPU constant to True or False depending on whether a GPU is being
-used or not'''
-#### Constants
 GPU = False
 if GPU:
     print "Trying to run under a GPU.  If this is not desired, then modify "+\
-        "autoencoder.py\nto set the GPU flag to False."
+        "network3.py\nto set the GPU flag to False."
     try: theano.config.device = 'gpu'
     except: pass # it's already set
     theano.config.floatX = 'float32'
 else:
     print "Running with a CPU.  If this is not desired, then the modify "+\
-        "autoencoder.py to set\nthe GPU flag to True."
+        "network3.py to set\nthe GPU flag to True."
 
-
-'''Place the data into shared variables.  This allows Theano to copy
-the data to the GPU, if one is available.'''
+'''Place the data into shared variables.'''
 def shared(data):
     shared_x = theano.shared(
         np.asarray(data, dtype=theano.config.floatX), borrow=True)
@@ -84,7 +79,7 @@ class Network(object):
     """Train the network using mini-batch stochastic gradient descent.
     Inputs: A set of training data, validation data, and test data. Other inputs
     include: number of epochs to be used during training, mini-batch size,
-    learning rate (eta), regularization parameter (lmbda), and a monitor handel
+    learning rate (eta), regularization parameter (lmbda), and a monitor handle
     to declare whether or not training cost, training z-score, and validation z-score
     should be monitored over training.
     Output: Three lists that contain instances of training cost, training z-score,
@@ -96,7 +91,7 @@ class Network(object):
         validation_x, validation_y = validation_data
         test_x, test_y = test_data
 
-        validation_cost, validation_zscore = [], []
+        validation_zscore = []
         training_cost, training_zscore = [], []
 
         # compute number of minibatches for training, validation and testing
@@ -113,7 +108,7 @@ class Network(object):
                    for param, grad in zip(self.params, grads)]
 
         # define functions to train a mini-batch, and to compute the
-        # accuracy in validation and test mini-batches.
+        # average z-score in validation and test mini-batches.
         i = T.lscalar() # mini-batch index
         train_mb = theano.function(
             [i], cost, updates=updates,
@@ -161,8 +156,6 @@ class Network(object):
                 if iteration % 1000 == 0:
                     print("Training mini-batch number {0}".format(iteration))
                 cost_ij = train_mb(minibatch_index)
-                '''if monitor:
-                    training_cost.append(cost_ij)'''
                 if (iteration+1) % num_training_batches == 0:
                     validation_accuracy = np.mean(
                         [validate_mb_accuracy(j) for j in xrange(num_validation_batches)])
@@ -243,57 +236,6 @@ class Network(object):
 
 #### Define layer types
 
-"""Used to create a combination of a convolutional and a max-pooling
-layer."""
-class ConvPoolLayer(object):
-
-    '''Initiate a Convolutional/pool layer in neural net. Includes option to specify
-    actication function'''
-    def __init__(self, filter_shape, image_shape, poolsize=(2, 2),
-                 activation_fn=sigmoid):
-        """`filter_shape` is a tuple of length 4, whose entries are the number
-        of filters, the number of input feature maps, the filter height, and the
-        filter width.
-
-        `image_shape` is a tuple of length 4, whose entries are the
-        mini-batch size, the number of input feature maps, the image
-        height, and the image width.
-
-        `poolsize` is a tuple of length 2, whose entries are the y and
-        x pooling sizes.
-
-        """
-        self.filter_shape = filter_shape
-        self.image_shape = image_shape
-        self.poolsize = poolsize
-        self.activation_fn=activation_fn
-        # initialize weights and biases
-        n_out = (filter_shape[0]*np.prod(filter_shape[2:])/np.prod(poolsize))
-        self.w = theano.shared(
-            np.asarray(
-                np.random.normal(loc=0, scale=np.sqrt(1.0/n_in), size=filter_shape),
-                dtype=theano.config.floatX),
-            borrow=True)
-        self.b = theano.shared(
-            np.asarray(
-                np.random.normal(loc=0, scale=1.0, size=(filter_shape[0],)),
-                dtype=theano.config.floatX),
-            borrow=True)
-        self.params = [self.w, self.b]
-
-    """Method used to calculate output of layer given an input.
-    Inputs: Input vector, Input vector (dropout included), mini-batch size"""
-    def set_inpt(self, inpt, inpt_dropout, mini_batch_size):
-        self.inpt = inpt.reshape(self.image_shape)
-        conv_out = conv.conv2d(
-            input=self.inpt, filters=self.w, filter_shape=self.filter_shape,
-            image_shape=self.image_shape)
-        pooled_out = pool.pool_2d(
-            input=conv_out, ds=self.poolsize, ignore_border=True)
-        self.output = self.activation_fn(
-            pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
-        self.output_dropout = self.output # no dropout in the convolutional layers
-
 
 """Used to create a fully connected neural net layer."""
 class FullyConnectedLayer(object):
@@ -340,51 +282,9 @@ class FullyConnectedLayer(object):
         y = net.y
         return T.sum(-y*T.log(a)-(1-y)*T.log(1-a))
 
-    """Return the accuracy for the mini-batch.
+    """Return the z-score for the mini-batch.
     Input: Expected output y
-    Output: Zscore """
-    def accuracy(self, y):
-        z = y - self.y_out
-        return T.sum(z**2)**0.5
-
-"""Used to create a softmax neural net layer."""
-class SoftmaxLayer(object):
-
-    """Initiate softmax layer
-    Inputs: number of input nodes, number of output nodes,
-    dropout rate"""
-    def __init__(self, n_in, n_out, p_dropout=0.0):
-        self.n_in = n_in
-        self.n_out = n_out
-        self.p_dropout = p_dropout
-        # Initialize weights and biases
-        self.w = theano.shared(
-            np.zeros((n_in, n_out), dtype=theano.config.floatX),
-            name='w', borrow=True)
-        self.b = theano.shared(
-            np.zeros((n_out,), dtype=theano.config.floatX),
-            name='b', borrow=True)
-        self.params = [self.w, self.b]
-
-    """Method used to calculate output of layer given an input.
-    Inputs: Input vector, Input vector (dropout included), mini-batch size"""
-    def set_inpt(self, inpt, inpt_dropout, mini_batch_size):
-        self.inpt = inpt.reshape((mini_batch_size, self.n_in))
-        self.output = softmax((1-self.p_dropout)*T.dot(self.inpt, self.w) + self.b)
-        self.y_out = self.output
-        self.inpt_dropout = dropout_layer(
-            inpt_dropout.reshape((mini_batch_size, self.n_in)), self.p_dropout)
-        self.output_dropout = softmax(T.dot(self.inpt_dropout, self.w) + self.b)
-
-    """Return the log-likelihood cost.
-    Input: Nueral net
-    Output: Log-Likelihood Cost"""
-    def cost(self, net):
-        return -T.mean(T.log(self.output_dropout)[T.arange(net.y.shape[0]), net.y])
-
-    """Return the accuracy for the mini-batch.
-    Input: Expected output y
-    Output: Zscore """
+    Output: Z score """
     def accuracy(self, y):
         z = y - self.y_out
         return T.sum(z**2)**0.5
@@ -411,16 +311,16 @@ instance of Network.
 Input: filename
 Output: Instance of network
 """
-def load(filename):
+def load(filename,dropout_ratio):
     f = open(filename, "r")
     data = cPickle.load(f)
     f.close()
     mini_batch_size = data["mini_batch_size"]
     net = Network([
-        FullyConnectedLayer(n_in=31, n_out=21,p_dropout=0.5),
-        FullyConnectedLayer(n_in=21, n_out=9,p_dropout=0.5),
-        FullyConnectedLayer(n_in=9, n_out=21,p_dropout=0.5),
-        FullyConnectedLayer(n_in=21, n_out=31, p_dropout=0.5)],
+        FullyConnectedLayer(n_in=31, n_out=21,p_dropout=dropout_ratio),
+        FullyConnectedLayer(n_in=21, n_out=9,p_dropout=dropout_ratio),
+        FullyConnectedLayer(n_in=9, n_out=21,p_dropout=dropout_ratio),
+        FullyConnectedLayer(n_in=21, n_out=31, p_dropout=dropout_ratio)],
         mini_batch_size)
     net.params = [theano.shared(param) for param in data["parameters"]]
     i=0
